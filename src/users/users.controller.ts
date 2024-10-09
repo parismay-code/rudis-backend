@@ -10,7 +10,6 @@ import {
   Param,
   Patch,
   Post,
-  Req,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -19,10 +18,6 @@ import { SetRoleDto } from 'src/users/dto/set-role.dto';
 import { User } from 'src/users/user.entity';
 import { Roles } from 'src/auth/role-auth.decorator';
 import { RoleGuard } from 'src/auth/role.guard';
-import { BanUserDto } from 'src/users/dto/ban-user.dto';
-import { SetGameDto } from './dto/set-game.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { AuthorizedRequest } from '../app.types';
 
 @Controller('users')
 @ApiTags('Users')
@@ -97,52 +92,5 @@ export class UsersController {
   @UseGuards(RoleGuard)
   removeRole(@Body() data: SetRoleDto) {
     return this.usersService.removeRole(data);
-  }
-
-  @UseInterceptors(ClassSerializerInterceptor)
-  @Post('/games')
-  @ApiOperation({ summary: 'Add user game' })
-  @ApiResponse({ status: HttpStatus.OK, type: User })
-  @UseGuards(JwtAuthGuard)
-  addGame(@Body() data: SetGameDto) {
-    return this.usersService.addGame(data);
-  }
-
-  @UseInterceptors(ClassSerializerInterceptor)
-  @Delete('/games')
-  @ApiOperation({ summary: 'Remove user game' })
-  @ApiResponse({ status: HttpStatus.OK, type: User })
-  @UseGuards(JwtAuthGuard)
-  removeGame(@Body() data: SetGameDto) {
-    return this.usersService.removeGame(data);
-  }
-
-  @UseInterceptors(ClassSerializerInterceptor)
-  @Post('/ban')
-  @ApiOperation({ summary: 'Ban a user' })
-  @ApiResponse({ status: HttpStatus.OK, type: User })
-  @Roles('admin')
-  @UseGuards(RoleGuard)
-  ban(@Body() data: BanUserDto) {
-    return this.usersService.ban(data);
-  }
-
-  @UseInterceptors(ClassSerializerInterceptor)
-  @Post('/unban/:id')
-  @ApiOperation({ summary: 'Unban a user' })
-  @ApiResponse({ status: HttpStatus.OK, type: User })
-  @Roles('admin')
-  @UseGuards(RoleGuard)
-  unban(@Param('id') id: number) {
-    return this.usersService.unban(id);
-  }
-
-  @Get('/streamer-token')
-  @ApiOperation({ summary: 'Get a streamer token' })
-  @ApiResponse({ status: HttpStatus.OK })
-  @Roles('streamer')
-  @UseGuards(RoleGuard)
-  getStreamerToken(@Req() request: AuthorizedRequest) {
-    return this.usersService.getStreamerToken(request.user.id);
   }
 }

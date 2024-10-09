@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString, Length, ValidateIf } from 'class-validator';
+import { IsString, Length, ValidateIf } from 'class-validator';
 
 export class CreateRoomDto {
   @IsString({ message: 'Room name must be a string' })
@@ -14,10 +14,6 @@ export class CreateRoomDto {
   })
   readonly description!: string;
 
-  @IsNumber({}, { message: 'Game ID must be a number' })
-  @ApiProperty({ example: '1', description: 'Game ID' })
-  readonly gameId!: number;
-
   @IsString({ message: 'Password must be a string' })
   @Length(4, 20, {
     message: 'Password must be between 4 and 20 characters long',
@@ -25,9 +21,4 @@ export class CreateRoomDto {
   @ValidateIf((object, value) => value !== null)
   @ApiProperty({ example: 'password', description: 'Room password' })
   readonly password!: string;
-
-  @IsNumber({}, { message: 'Max players must be a number' })
-  @ValidateIf((object, value) => value !== null)
-  @ApiProperty({ example: '20', description: 'Room max players count' })
-  readonly maxPlayers!: number;
 }

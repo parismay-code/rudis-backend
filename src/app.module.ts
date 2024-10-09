@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from 'src/users/users.module';
 import { RolesModule } from 'src/roles/roles.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { RoomsModule } from './rooms/rooms.module';
-import { GamesModule } from './games/games.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   providers: [],
@@ -26,7 +26,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     RolesModule,
     AuthModule,
     RoomsModule,
-    GamesModule,
+    MessagesModule,
   ],
 })
 export class AppModule {}

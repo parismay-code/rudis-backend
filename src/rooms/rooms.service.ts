@@ -1,7 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { CreateRoomDto } from './dto/create-room.dto';
-import { JoinRoomDto } from './dto/join-room.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
 import { Room } from './room.entity';
@@ -70,7 +69,6 @@ export class RoomsService {
   async getAllRooms() {
     return await this.roomsRepository.find({
       relations: {
-        game: true,
         owner: true,
       },
       select: {
@@ -85,7 +83,6 @@ export class RoomsService {
     const room = await this.roomsRepository.findOne({
       where: { id: Equal(id) },
       relations: {
-        game: true,
         owner: true,
       },
       select: {
@@ -100,17 +97,5 @@ export class RoomsService {
     }
 
     return room;
-  }
-
-  async joinRoom(data: JoinRoomDto) {
-    const room = await this.getRoomById(data.roomId);
-
-    const passwordEquals = await bcrypt.compare(data.password, room.password);
-
-    if (!passwordEquals) {
-      throw new HttpException('Incorrect room password', HttpStatus.FORBIDDEN);
-    }
-
-    return true;
   }
 }

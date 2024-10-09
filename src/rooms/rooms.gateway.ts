@@ -8,9 +8,12 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import * as bcrypt from 'bcrypt';
 import { RoomsService } from './rooms.service';
 import { User } from '../users/user.entity';
 import { Room } from './room.entity';
+import { Message } from '../messages/message.entity';
+import { MessagesService } from '../messages/messages.service';
 
 type UserRTCData = {
   role: string | null;
@@ -22,12 +25,13 @@ type RoomUser = User & UserRTCData;
 
 type RoomData = {
   model: Room;
-  stage: 'preparing' | 'started' | 'paused' | 'finished';
   users: RoomUser[];
+  messages: Message[];
 };
 
 type JoinRoomData = {
   id: number;
+  password?: string;
   user: User;
 };
 
@@ -46,13 +50,29 @@ type IceCandidateData = {
   candidate: RTCIceCandidate;
 };
 
+type MessageData = {
+  text: string;
+  roomId: number;
+  replyId?: number;
+  user: User;
+};
+
+type DeleteMessageData = {
+  roomId: number;
+  messageId: number;
+  user: User;
+};
+
 @WebSocketGateway(Number(process.env.SOCKET_PORT || 81), {
   transports: ['websocket'],
 })
 export class RoomsGateway implements OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
-  constructor(private readonly roomsService: RoomsService) {}
+  constructor(
+    private readonly roomsService: RoomsService,
+    private readonly messagesService: MessagesService,
+  ) {}
 
   private rooms: Map<string, RoomData> = new Map();
 
@@ -66,10 +86,13 @@ export class RoomsGateway implements OnGatewayDisconnect {
     let room = this.rooms.get(roomName);
 
     if (!room) {
+      const model = await this.roomsService.getRoomById(id);
+      const messages = await this.messagesService.getAllMessages(id);
+
       room = {
-        model: await this.roomsService.getRoomById(id),
+        model,
         users: [],
-        stage: 'preparing',
+        messages,
       };
 
       this.rooms.set(roomName, room);
@@ -119,7 +142,7 @@ export class RoomsGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage('joinRoom')
   async onRoomJoined(
-    @MessageBody() { id, user }: JoinRoomData,
+    @MessageBody() { id, user, password }: JoinRoomData,
     @ConnectedSocket() socket: Socket,
   ) {
     if (!user) {
@@ -127,13 +150,6 @@ export class RoomsGateway implements OnGatewayDisconnect {
     }
 
     const { roomName, room } = await this.findOrSetRoom(id);
-
-    const maxPlayers = room.model.maxPlayers || room.model.game.maxPlayers;
-
-    if (room.users.length > maxPlayers) {
-      socket.emit('tooManyPeople');
-      return;
-    }
 
     const roomUser = room.users.find((roomUser) => roomUser.id === user.id);
 
@@ -156,6 +172,21 @@ export class RoomsGateway implements OnGatewayDisconnect {
         ...room,
       });
     } else {
+      if (room.model.password) {
+        if (!password) {
+          throw new WsException('Room is private');
+        }
+
+        const passwordEquals = await bcrypt.compare(
+          password,
+          room.model.password,
+        );
+
+        if (!passwordEquals) {
+          throw new WsException('Incorrect room password');
+        }
+      }
+
       userData = {
         ...user,
         socketId: socket.id,
@@ -172,6 +203,8 @@ export class RoomsGateway implements OnGatewayDisconnect {
     this.socketsRooms.set(socket.id, roomName);
 
     this.server.in(roomName).emit('newParticipant', { user: userData });
+
+    socket.emit('roomData', { ...room });
 
     socket.join(roomName);
   }
@@ -219,5 +252,42 @@ export class RoomsGateway implements OnGatewayDisconnect {
     @ConnectedSocket() socket: Socket,
   ) {
     this.server.to(to).emit('icecandidate', { candidate, from: socket.id });
+  }
+
+  @SubscribeMessage('sendMessage')
+  async onMessageSent(
+    @MessageBody()
+    { text, roomId, replyId, user }: MessageData,
+  ) {
+    const { roomName, room } = await this.findOrSetRoom(roomId);
+
+    const { id } = await this.messagesService.createMessage(
+      { text, roomId, replyId },
+      user,
+    );
+
+    const message = await this.messagesService.getMessageById(id);
+
+    room.messages.unshift(message);
+
+    this.rooms.set(roomName, room);
+
+    this.server.in(roomName).emit('message', { message });
+  }
+
+  @SubscribeMessage('deleteMessage')
+  async onMessageDeleted(
+    @MessageBody()
+    { roomId, messageId, user }: DeleteMessageData,
+  ) {
+    const { roomName, room } = await this.findOrSetRoom(roomId);
+
+    await this.messagesService.deleteMessage(messageId, user);
+
+    room.messages = room.messages.filter((message) => message.id !== messageId);
+
+    this.rooms.set(roomName, room);
+
+    this.server.in(roomName).emit('messageDeleted', { messageId });
   }
 }

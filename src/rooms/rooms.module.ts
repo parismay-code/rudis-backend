@@ -7,6 +7,7 @@ import { Room } from './room.entity';
 import { UsersModule } from '../users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { MessagesModule } from '../messages/messages.module';
 
 @Module({
   providers: [RoomsService, RoomsGateway],
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
     TypeOrmModule.forFeature([Room, User]),
     forwardRef(() => AuthModule),
     forwardRef(() => UsersModule),
+    forwardRef(() => MessagesModule),
   ],
   exports: [TypeOrmModule, RoomsService, RoomsGateway],
 })
