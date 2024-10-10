@@ -33,7 +33,6 @@ export class AuthService {
 
     const user = await this.usersService.createUser({
       login: data.login,
-      email: data.email,
       password: hashPassword,
     });
 
@@ -55,11 +54,8 @@ export class AuthService {
     const payload = {
       id: user.id,
       login: user.login,
-      email: user.email,
-      banned: user.banned,
-      banReason: user.banReason,
+      avatar: user.avatar,
       roles: user.roles,
-      games: user.games,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

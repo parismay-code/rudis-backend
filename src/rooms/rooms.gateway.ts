@@ -63,7 +63,7 @@ type DeleteMessageData = {
   user: User;
 };
 
-@WebSocketGateway(Number(process.env.SOCKET_PORT || 81), {
+@WebSocketGateway({
   transports: ['websocket'],
 })
 export class RoomsGateway implements OnGatewayDisconnect {
@@ -92,7 +92,7 @@ export class RoomsGateway implements OnGatewayDisconnect {
       room = {
         model,
         users: [],
-        messages,
+        messages: messages.reverse(),
       };
 
       this.rooms.set(roomName, room);
@@ -268,7 +268,7 @@ export class RoomsGateway implements OnGatewayDisconnect {
 
     const message = await this.messagesService.getMessageById(id);
 
-    room.messages.unshift(message);
+    room.messages.push(message);
 
     this.rooms.set(roomName, room);
 

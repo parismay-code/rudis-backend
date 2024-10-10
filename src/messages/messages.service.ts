@@ -4,12 +4,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Equal, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Message } from './message.entity';
+import { RoomsService } from '../rooms/rooms.service';
 
 @Injectable()
 export class MessagesService {
   constructor(
     @InjectRepository(Message)
     private readonly messagesRepository: Repository<Message>,
+    private readonly roomsService: RoomsService,
   ) {}
 
   private checkAuthor(message: Message, user: User) {
@@ -26,10 +28,17 @@ export class MessagesService {
     return true;
   }
 
-  async createMessage(data: CreateMessageDto, user: User) {
-    Object.assign(data, { userId: user.id });
+  async createMessage({ text, roomId, replyId }: CreateMessageDto, user: User) {
+    const message = this.messagesRepository.create({ text });
 
-    const message = this.messagesRepository.create(data);
+    const room = await this.roomsService.getRoomById(roomId);
+
+    message.user = user;
+    message.room = room;
+
+    if (replyId) {
+      message.reply = await this.getMessageById(replyId);
+    }
 
     return await this.messagesRepository.save(message);
   }
@@ -46,7 +55,7 @@ export class MessagesService {
 
   async getAllMessages(id: number) {
     return await this.messagesRepository.find({
-      where: { id: Equal(id) },
+      where: { room: { id: Equal(id) } },
       take: 50,
       order: { createdAt: 'DESC' },
       relations: {
